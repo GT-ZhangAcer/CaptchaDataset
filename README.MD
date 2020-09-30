@@ -41,7 +41,7 @@ _____
 ### 简单读取示例(Python)
 ```python
 import os
-import PIL.Image
+import PIL.Image as Image
 
 DATA_PATH = "数据集所在的路径"
 
