@@ -26,8 +26,14 @@ _____
 
 ```
 ### 图像文件
+#### OCR_Dataset  
+70x30 JPEG-24Bit结构  
+![示例数据](OCR_Dataset/1.jpg)  
+#### Classify_Dataset
 15x30 JPEG-24Bit结构  
-![示例数据](OCR_Dataset/1.jpg)
+![示例数据](Classify_Dataset/1.jpg)  
+
+
 ### 标签文件结构
 `{str(1.jpg):int(4), str(文件名):int(label), ...}`
 > Tips OCR_Dataset的label非int型，而是str(xxxx)格式
