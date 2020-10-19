@@ -91,6 +91,6 @@ class InferReader(Dataset):
 
 
 if __name__ == '__main__':
-    for sample in Reader("/Users/zhanghongji/PycharmProjects/CaptchaDataset/OCR_Dataset"):
-        print(sample)
-        break
+    sample = Reader("/Users/zhanghongji/PycharmProjects/CaptchaDataset/OCR_Dataset")[0]
+    print(sample)
+

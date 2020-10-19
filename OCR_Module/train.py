@@ -23,8 +23,6 @@ IMAGE_SHAPE_W = 70
 # 需与Reader中保持一致 - 次部分在Notebook中可以合并
 # 数据集标签长度最大值
 LABEL_MAX_LEN = 4
-# 推理结果长度最大值
-INFER_MAX_LEN = 4
 
 
 # 定义网络结构
