@@ -7,8 +7,6 @@ import paddle as pp
 
 from reader import Reader
 
-# 运行设备选择
-USE_GPU = False
 # Data文件夹所在路径 - 推荐在自己电脑上使用时选择绝对路径写法 例如:"C:\DLExample\Paddle_classify\data" 可以有效避免因路径问题读不到文件
 DATA_PATH = "/Users/zhanghongji/PycharmProjects/CaptchaDataset/Classify_Dataset"
 # 分类数量，0~9个数字，所以是10分类任务
@@ -32,11 +30,12 @@ class Net(pp.nn.Layer):
         layer1 = pp.nn.functional.relu(self.layer1(x))
         layer2 = self.layer2(layer1)
         if self.is_infer:
+            # 若为预测，默认给出是10类各自的概率，可以用下方API获取最高概率的标签index，在本次项目中即为预测结果
             layer2 = pp.tensor.argmax(layer2)
         return layer2
 
 
-# 定义输出层 - img的shape应为NCHW格式（并行数量一般为自适应所以为-1，通道数，高，宽）
+# 定义输入层 - img的shape应为NCHW格式（并行数量一般为自适应所以为-1，通道数，高，宽）
 input_define = pp.static.InputSpec(shape=[-1, IMAGE_SHAPE_C * IMAGE_SHAPE_H * IMAGE_SHAPE_W],
                                    dtype="float32",
                                    name="img")
