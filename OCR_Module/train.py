@@ -10,7 +10,7 @@ from reader import Reader, InferReader
 # 数据集路径设置
 DATA_PATH = "/Users/zhanghongji/PycharmProjects/CaptchaDataset/OCR_Dataset"
 # 训练轮数
-EPOCH = 50
+EPOCH = 10
 # 训练超参数
 BATCH_SIZE = 16
 # 分类数量设置 - 因数据集中共包含0~9共10种数字+，所以是11分类任务
@@ -32,18 +32,18 @@ class Net(pp.nn.Layer):
         self.is_infer = is_infer
 
         # 定义一层3x3卷积+BatchNorm
-        self.conv1 = pp.nn.Conv2d(in_channels=IMAGE_SHAPE_C,
+        self.conv1 = pp.nn.Conv2D(in_channels=IMAGE_SHAPE_C,
                                   out_channels=32,
                                   kernel_size=3)
-        self.bn1 = pp.nn.BatchNorm2d(32)
+        self.bn1 = pp.nn.BatchNorm2D(32)
         # 定义一层步长为2的3x3卷积进行下采样+BatchNorm
-        self.conv2 = pp.nn.Conv2d(in_channels=32,
+        self.conv2 = pp.nn.Conv2D(in_channels=32,
                                   out_channels=64,
                                   kernel_size=3,
                                   stride=2)
-        self.bn2 = pp.nn.BatchNorm2d(64)
+        self.bn2 = pp.nn.BatchNorm2D(64)
         # 定义一层1x1卷积压缩通道数，输出通道数设置为比LABEL_MAX_LEN稍大的定值即可
-        self.conv3 = pp.nn.Conv2d(in_channels=64,
+        self.conv3 = pp.nn.Conv2D(in_channels=64,
                                   out_channels=LABEL_MAX_LEN + 4,
                                   kernel_size=1)
         # 定义全连接层，压缩并提取特征（可选）
@@ -82,6 +82,7 @@ class Net(pp.nn.Layer):
         # 若为推理模式则需做softmax获取标签概率
         if self.is_infer:
             x = pp.nn.functional.softmax(x)
+            x = pp.tensor.argmax(x, axis=-1)
         return x
 
 
@@ -91,7 +92,6 @@ input_define = pp.static.InputSpec(shape=[-1, IMAGE_SHAPE_C, IMAGE_SHAPE_H, IMAG
                                    name="img")
 
 if __name__ == '__main__':
-
     # 监督训练需要定义label，预测则不需要该步骤
     label_define = pp.static.InputSpec(shape=[-1, 4],
                                        dtype="int32",
@@ -106,8 +106,8 @@ if __name__ == '__main__':
             super().__init__()
 
         def forward(self, ipt, label):
-            input_lengths = pp.tensor.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN + 4)
-            label_lengths = pp.tensor.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN)
+            input_lengths = pp.tensor.creation.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN + 4)
+            label_lengths = pp.tensor.creation.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN)
             # 按文档要求进行转换dim顺序
             ipt = pp.tensor.transpose(ipt, [1, 0, 2])
             # 计算loss

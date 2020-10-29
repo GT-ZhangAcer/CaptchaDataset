@@ -28,11 +28,11 @@ class Net(pp.nn.Layer):
     # 定义网络结构的前向计算过程
     def forward(self, x):
         layer1 = pp.nn.functional.relu(self.layer1(x))
-        layer2 = self.layer2(layer1)
+        out = self.layer2(layer1)
         if self.is_infer:
             # 若为预测，默认给出是10类各自的概率，可以用下方API获取最高概率的标签index，在本次项目中即为预测结果
-            layer2 = pp.tensor.argmax(layer2)
-        return layer2
+            out = pp.tensor.argmax(out)
+        return out
 
 
 # 定义输入层 - img的shape应为NCHW格式（并行数量一般为自适应所以为-1，通道数，高，宽）
