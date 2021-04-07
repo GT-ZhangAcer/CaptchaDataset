@@ -1,7 +1,7 @@
 import paddle
 import numpy as np
 
-from ppcuop.ctc_decoder import CTCDecoder
+from ctc_decoder import CTCDecoder
 
 
 class SeqAcc(paddle.metric.Metric):
