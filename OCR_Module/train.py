@@ -13,8 +13,7 @@ DATA_PATH = "/Users/zhanghongji/PycharmProjects/CaptchaDataset/OCR_Dataset"
 EPOCH = 10
 # 训练超参数
 BATCH_SIZE = 16
-# 分类数量设置 - 因数据集中共包含0~9共10种数字+，所以是11分类任务
-CLASSIFY_NUM = 11
+
 # CHW格式 - 通道数、宽度、高度
 IMAGE_SHAPE_C = 3
 IMAGE_SHAPE_H = 30
@@ -24,6 +23,10 @@ IMAGE_SHAPE_W = 70
 # 数据集标签长度最大值
 LABEL_MAX_LEN = 4
 
+# 分类数量设置 - 因数据集中共包含0~9共10种数字+分隔符，所以是11分类任务
+CLASSIFY_NUM = 11
+# 模型大小设置 - 该值控制了第一层卷积的卷积核数量，修改后同样会影响到之后的其它层 - Tips：过大或过小均会影响模型效果
+CHANNELS_BASE = 32
 
 # 定义网络结构
 class Net(pp.nn.Layer):
@@ -33,28 +36,28 @@ class Net(pp.nn.Layer):
 
         # 定义一层3x3卷积+BatchNorm
         self.conv1 = pp.nn.Conv2D(in_channels=IMAGE_SHAPE_C,
-                                  out_channels=32,
+                                  out_channels=CHANNELS_BASE,
                                   kernel_size=3)
-        self.bn1 = pp.nn.BatchNorm2D(32)
+        self.bn1 = pp.nn.BatchNorm2D(CHANNELS_BASE)
         # 定义一层步长为2的3x3卷积进行下采样+BatchNorm
-        self.conv2 = pp.nn.Conv2D(in_channels=32,
-                                  out_channels=64,
+        self.conv2 = pp.nn.Conv2D(in_channels=CHANNELS_BASE,
+                                  out_channels=CHANNELS_BASE * 2,
                                   kernel_size=3,
                                   stride=2)
-        self.bn2 = pp.nn.BatchNorm2D(64)
-        # 定义一层1x1卷积压缩通道数，输出通道数设置为比LABEL_MAX_LEN稍大的定值即可
-        self.conv3 = pp.nn.Conv2D(in_channels=64,
-                                  out_channels=LABEL_MAX_LEN + 4,
+        self.bn2 = pp.nn.BatchNorm2D(CHANNELS_BASE * 2)
+        # 定义一层1x1卷积压缩通道数 建议out_channels值大于CLASSIFY_NUM
+        self.conv3 = pp.nn.Conv2D(in_channels=CHANNELS_BASE * 2,
+                                  out_channels=CHANNELS_BASE,
                                   kernel_size=1)
-        # 定义全连接层，压缩并提取特征（可选）
+        # 定义全连接层，压缩并提取特征，输出通道数设置为比LABEL_MAX_LEN稍大的定值可获取更优效果，当然也可设置为LABEL_MAX_LEN
         self.linear = pp.nn.Linear(in_features=429,
-                                   out_features=128)
+                                   out_features=LABEL_MAX_LEN + 4)
         # 定义RNN层来更好提取序列特征，此处为双向LSTM输出为2 x hidden_size，可尝试换成GRU等RNN结构
-        self.lstm = pp.nn.LSTM(input_size=128,
-                               hidden_size=64,
+        self.lstm = pp.nn.LSTM(input_size=CHANNELS_BASE,
+                               hidden_size=CHANNELS_BASE // 2,
                                direction="bidirectional")
         # 定义输出层，输出大小为分类数
-        self.linear2 = pp.nn.Linear(in_features=64 * 2,
+        self.linear2 = pp.nn.Linear(in_features=CHANNELS_BASE,
                                     out_features=CLASSIFY_NUM)
 
     def forward(self, ipt):
@@ -69,19 +72,24 @@ class Net(pp.nn.Layer):
         # 卷积 + ReLU
         x = self.conv3(x)
         x = pp.nn.functional.relu(x)
-        # 将3维特征转换为2维特征
+        # 将3维特征转换为2维特征 - 此处可以使用reshape代替
         x = pp.tensor.flatten(x, 2)
-        # 全连接 + ReLU
+        # 全连接 + ReLU并更改NCHW格式为Max len, N, C
         x = self.linear(x)
         x = pp.nn.functional.relu(x)
-        # 双向LSTM - [0]代表取双向结果，[1][0]代表forward结果,[1][1]代表backward结果，详细说明可参考官方文档LSTM
+        x = x.transpose([2, 0, 1])
+
+        # 双向LSTM - [0]代表取双向结果，[1][0]代表forward结果,[1][1]代表backward结果，详细说明可在官方文档中搜索'LSTM'
         x = self.lstm(x)[0]
-        # 输出层
+        # 输出层 - Shape = (Max len, Batch size, Signal) 
         x = self.linear2(x)
 
-        # 若为推理模式则需做softmax获取标签概率
+        # 在计算损失时ctc-loss会自动进行softmax，所以在推理模式中需额外做softmax获取标签概率
         if self.is_infer:
+            # 输出层 - Shape = (Batch Size, Max label len, Prob) 
+            x = x.transpose([1, 0, 2])
             x = pp.nn.functional.softmax(x)
+            # 转换为标签
             x = pp.tensor.argmax(x, axis=-1)
         return x
 
@@ -106,11 +114,9 @@ if __name__ == '__main__':
             super().__init__()
 
         def forward(self, ipt, label):
-            input_lengths = pp.tensor.creation.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN + 4)
-            label_lengths = pp.tensor.creation.fill_constant([BATCH_SIZE, 1], "int64", LABEL_MAX_LEN)
-            # 按文档要求进行转换dim顺序
-            ipt = pp.tensor.transpose(ipt, [1, 0, 2])
-            # 计算loss
+            input_lengths = pp.tensor.creation.full([BATCH_SIZE, 1], LABEL_MAX_LEN + 4, "int64")
+            label_lengths = pp.tensor.creation.full([BATCH_SIZE, 1], LABEL_MAX_LEN, "int64")
+
             loss = pp.nn.functional.ctc_loss(ipt, label, input_lengths, label_lengths, blank=10)
             return loss
 
