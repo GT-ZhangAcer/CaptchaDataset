@@ -55,7 +55,8 @@ class Net(pp.nn.Layer):
         # 定义RNN层来更好提取序列特征，此处为双向LSTM输出为2 x hidden_size，可尝试换成GRU等RNN结构
         self.lstm = pp.nn.LSTM(input_size=CHANNELS_BASE,
                                hidden_size=CHANNELS_BASE // 2,
-                               direction="bidirectional")
+                               direction="bidirectional",
+                               time_major=True)
         # 定义输出层，输出大小为分类数
         self.linear2 = pp.nn.Linear(in_features=CHANNELS_BASE,
                                     out_features=CLASSIFY_NUM)
