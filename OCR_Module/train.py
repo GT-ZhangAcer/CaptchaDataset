@@ -115,8 +115,9 @@ if __name__ == '__main__':
             super().__init__()
 
         def forward(self, ipt, label):
-            input_lengths = pp.tensor.creation.full([BATCH_SIZE], LABEL_MAX_LEN + 4, "int64")
-            label_lengths = pp.tensor.creation.full([BATCH_SIZE], LABEL_MAX_LEN, "int64")
+            size = label.shape[0]
+            input_lengths = pp.tensor.creation.full([size], LABEL_MAX_LEN + 4, "int64")
+            label_lengths = pp.tensor.creation.full([size], LABEL_MAX_LEN, "int64")
 
             loss = pp.nn.functional.ctc_loss(ipt, label, input_lengths, label_lengths, blank=10)
             return loss
